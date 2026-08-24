@@ -1,13 +1,2113 @@
-<!doctype html>
-<html><head><meta charset="utf-8"><title>Personal Knowledge Base</title>
-<style>body{font-family:Arial;max-width:900px;margin:40px auto;padding:0 20px}input,button{padding:10px;margin:5px}#out{white-space:pre-wrap;background:#f5f5f5;padding:20px}</style></head>
-<body><h1>Personal Knowledge Base</h1><p>Multi-user semantic search backed by Qdrant + MCP.</p>
-<input id="user" value="demo"><input id="q" placeholder="Ask your notes a question" size="45"><button onclick="search()">Search</button>
-<input type="file" id="file"><button onclick="upload()">Upload</button>
-<pre id="out"></pre>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Personal Knowledge Base</title>
+
+    <style>
+
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --maroon: #7d2027;
+            --dark-maroon: #541419;
+            --light-maroon: #a9363d;
+            --cream: #f7eee2;
+            --beige: #ead9c5;
+            --soft: #fffaf3;
+            --gold: #b98748;
+            --brown: #4a2923;
+            --shadow: rgba(92, 39, 30, 0.16);
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "DM Sans", sans-serif;
+            color: var(--brown);
+
+            background:
+                radial-gradient(circle at 10% 10%, rgba(169,54,61,.12), transparent 25%),
+                radial-gradient(circle at 90% 20%, rgba(185,135,72,.12), transparent 25%),
+                linear-gradient(135deg, #fbf4eb, #eee0cf);
+
+            overflow-x: hidden;
+        }
+
+        /* ---------------------------------------
+           BACKGROUND DECORATION
+        --------------------------------------- */
+
+        body::before {
+            content: "";
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            background: rgba(125, 32, 39, .05);
+            filter: blur(70px);
+            top: -150px;
+            left: -150px;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            width: 450px;
+            height: 450px;
+            border-radius: 50%;
+            background: rgba(185, 135, 72, .07);
+            filter: blur(70px);
+            bottom: -150px;
+            right: -150px;
+            pointer-events: none;
+        }
+
+        /* ---------------------------------------
+           NAVBAR
+        --------------------------------------- */
+
+        nav {
+            height: 82px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            padding: 0 5%;
+
+            background: rgba(255,250,243,.78);
+            backdrop-filter: blur(18px);
+
+            border-bottom: 1px solid rgba(125,32,39,.12);
+
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .brand-icon {
+            width: 46px;
+            height: 46px;
+
+            background: linear-gradient(
+                145deg,
+                #9f3239,
+                #64171d
+            );
+
+            border-radius: 10px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            color: white;
+            font-size: 22px;
+
+            box-shadow:
+                0 10px 25px rgba(125,32,39,.25);
+
+            transform: rotate(-3deg);
+
+            animation: floatIcon 4s ease-in-out infinite;
+        }
+
+        @keyframes floatIcon {
+
+            0%,100% {
+                transform: translateY(0) rotate(-3deg);
+            }
+
+            50% {
+                transform: translateY(-6px) rotate(3deg);
+            }
+        }
+
+        .brand h2 {
+            margin: 0;
+            font-family: "Playfair Display", serif;
+            color: var(--dark-maroon);
+        }
+
+        .brand span {
+            font-size: 12px;
+            color: #805c4d;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-links button {
+            background: transparent;
+            color: var(--brown);
+            border: none;
+            padding: 11px 18px;
+            border-radius: 9px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .nav-links button:hover,
+        .nav-links button.active {
+            background: var(--maroon);
+            color: white;
+
+            box-shadow:
+                0 8px 20px rgba(125,32,39,.2);
+        }
+
+        /* ---------------------------------------
+           MAIN
+        --------------------------------------- */
+
+        .container {
+            width: 92%;
+            max-width: 1400px;
+            margin: 35px auto;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ---------------------------------------
+           LOGIN
+        --------------------------------------- */
+
+        #authCard {
+            max-width: 500px;
+            margin: 70px auto;
+        }
+
+        .auth-tabs {
+            display: flex;
+            background: #ead8c3;
+            border-radius: 18px 18px 0 0;
+            overflow: hidden;
+        }
+
+        .auth-tabs button {
+            flex: 1;
+            padding: 17px;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            cursor: pointer;
+            color: var(--brown);
+        }
+
+        .auth-tabs button.active {
+            background: var(--maroon);
+            color: white;
+        }
+
+        .auth-box {
+            background: rgba(255,250,243,.9);
+            padding: 40px;
+            border-radius: 0 0 20px 20px;
+
+            box-shadow:
+                0 25px 70px var(--shadow);
+
+            border: 1px solid rgba(125,32,39,.1);
+        }
+
+        .auth-box h1 {
+            font-family: "Playfair Display", serif;
+            color: var(--dark-maroon);
+            font-size: 32px;
+        }
+
+        .auth-box p {
+            color: #806456;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            margin: 8px 0;
+
+            border-radius: 11px;
+
+            border: 1px solid #ddc9b4;
+
+            background: #fffaf3;
+
+            color: var(--brown);
+
+            font-size: 14px;
+
+            outline: none;
+
+            transition: .25s;
+        }
+
+        input:focus {
+            border-color: var(--maroon);
+
+            box-shadow:
+                0 0 0 4px rgba(125,32,39,.08);
+        }
+
+        button {
+            font-family: inherit;
+        }
+
+        .primary-btn {
+            width: 100%;
+            margin-top: 12px;
+
+            padding: 14px;
+
+            border: none;
+            border-radius: 11px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #8d272e,
+                    #64171d
+                );
+
+            color: white;
+
+            font-size: 15px;
+            font-weight: 600;
+
+            cursor: pointer;
+
+            box-shadow:
+                0 10px 25px rgba(125,32,39,.22);
+
+            transition: .25s;
+        }
+
+        .primary-btn:hover {
+            transform: translateY(-3px);
+
+            box-shadow:
+                0 15px 30px rgba(125,32,39,.3);
+        }
+
+        /* ---------------------------------------
+           APP HEADER
+        --------------------------------------- */
+
+        .welcome {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 25px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(255,250,243,.95),
+                    rgba(239,222,203,.85)
+                );
+
+            border-radius: 22px;
+
+            padding: 38px;
+
+            border: 1px solid rgba(125,32,39,.1);
+
+            box-shadow:
+                0 20px 60px var(--shadow);
+
+            overflow: hidden;
+
+            position: relative;
+        }
+
+        .welcome h1 {
+            font-family: "Playfair Display", serif;
+            font-size: 42px;
+            margin: 0 0 10px;
+            color: var(--dark-maroon);
+        }
+
+        .welcome h1 span {
+            color: var(--maroon);
+        }
+
+        .welcome p {
+            color: #76594c;
+        }
+
+        /* ---------------------------------------
+           3D FLOATING CUBE
+        --------------------------------------- */
+
+        .scene {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            perspective: 800px;
+        }
+
+        .cube {
+            width: 100px;
+            height: 100px;
+
+            position: relative;
+
+            transform-style: preserve-3d;
+
+            animation:
+                cubeRotate 9s linear infinite,
+                cubeFloat 4s ease-in-out infinite;
+        }
+
+        @keyframes cubeRotate {
+
+            from {
+                transform: rotateX(-20deg) rotateY(0deg);
+            }
+
+            to {
+                transform: rotateX(-20deg) rotateY(360deg);
+            }
+        }
+
+        @keyframes cubeFloat {
+
+            0%,100% {
+                margin-top: 0;
+            }
+
+            50% {
+                margin-top: -20px;
+            }
+        }
+
+        .face {
+            position: absolute;
+
+            width: 100px;
+            height: 100px;
+
+            border: 2px solid #9b3738;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #9d3638,
+                    #5d161c
+                );
+
+            opacity: .94;
+
+            box-shadow:
+                inset 0 0 30px rgba(255,255,255,.15);
+        }
+
+        .front  { transform: translateZ(50px); }
+        .back   { transform: rotateY(180deg) translateZ(50px); }
+        .right  { transform: rotateY(90deg) translateZ(50px); }
+        .left   { transform: rotateY(-90deg) translateZ(50px); }
+        .top    { transform: rotateX(90deg) translateZ(50px); }
+        .bottom { transform: rotateX(-90deg) translateZ(50px); }
+
+        /* ---------------------------------------
+           STATS
+        --------------------------------------- */
+
+        .stats {
+            display: grid;
+
+            grid-template-columns:
+                repeat(4, 1fr);
+
+            gap: 15px;
+
+            margin-top: 25px;
+        }
+
+        .stat {
+            background: rgba(255,250,243,.8);
+
+            border: 1px solid #e4d1bd;
+
+            border-radius: 15px;
+
+            padding: 20px;
+
+            transition: .3s;
+
+            box-shadow:
+                0 8px 25px rgba(100,50,30,.07);
+        }
+
+        .stat:hover {
+            transform:
+                translateY(-7px)
+                rotateX(2deg);
+
+            box-shadow:
+                0 18px 35px rgba(100,50,30,.14);
+        }
+
+        .stat-icon {
+            font-size: 20px;
+            color: var(--maroon);
+        }
+
+        .stat strong {
+            display: block;
+
+            font-size: 28px;
+
+            margin-top: 8px;
+
+            color: var(--dark-maroon);
+        }
+
+        .stat span {
+            font-size: 12px;
+            color: #8a6c5d;
+        }
+
+        /* ---------------------------------------
+           GRID
+        --------------------------------------- */
+
+        .grid {
+            display: grid;
+
+            grid-template-columns:
+                1fr 1fr;
+
+            gap: 25px;
+
+            margin-top: 25px;
+        }
+
+        .card {
+            background: rgba(255,250,243,.9);
+
+            border:
+                1px solid #e4d1bd;
+
+            border-radius: 20px;
+
+            padding: 28px;
+
+            box-shadow:
+                0 15px 45px rgba(100,50,30,.09);
+
+            transition: .3s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+        }
+
+        .card h2 {
+            font-family: "Playfair Display", serif;
+
+            color: var(--dark-maroon);
+
+            margin-top: 0;
+        }
+
+        /* ---------------------------------------
+           SEARCH
+        --------------------------------------- */
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-box input {
+            margin: 0;
+        }
+
+        .search-box button {
+            min-width: 120px;
+
+            border: none;
+
+            border-radius: 11px;
+
+            background: var(--maroon);
+
+            color: white;
+
+            cursor: pointer;
+        }
+
+        .search-box button:hover {
+            background: var(--dark-maroon);
+        }
+
+        /* ---------------------------------------
+           UPLOAD
+        --------------------------------------- */
+
+        .drop-zone {
+            border:
+                2px dashed #d7bda3;
+
+            border-radius: 16px;
+
+            padding: 35px;
+
+            text-align: center;
+
+            background:
+                linear-gradient(
+                    145deg,
+                    #fffaf4,
+                    #f5e9db
+                );
+
+            transition: .3s;
+        }
+
+        .drop-zone:hover {
+            border-color: var(--maroon);
+
+            transform:
+                translateY(-4px);
+        }
+
+        .folder {
+            width: 70px;
+            height: 55px;
+
+            background:
+                linear-gradient(
+                    145deg,
+                    #a33a3d,
+                    #64171d
+                );
+
+            border-radius: 8px;
+
+            margin: auto auto 15px;
+
+            position: relative;
+
+            animation:
+                folderFloat 3s ease-in-out infinite;
+
+            box-shadow:
+                0 15px 25px rgba(125,32,39,.2);
+        }
+
+        .folder::before {
+            content: "";
+
+            position: absolute;
+
+            width: 28px;
+            height: 10px;
+
+            background: #9c3639;
+
+            top: -8px;
+            left: 7px;
+
+            border-radius: 5px 5px 0 0;
+        }
+
+        @keyframes folderFloat {
+
+            0%,100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .choose-btn {
+            margin-top: 15px;
+
+            background: var(--maroon);
+
+            color: white;
+
+            border: none;
+
+            padding: 13px 25px;
+
+            border-radius: 10px;
+
+            cursor: pointer;
+        }
+
+        /* ---------------------------------------
+           SOURCES
+        --------------------------------------- */
+
+        .sources-card {
+            margin-top: 25px;
+        }
+
+        .source-item {
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            padding: 16px;
+
+            border:
+                1px solid #ead9c5;
+
+            border-radius: 12px;
+
+            margin-top: 10px;
+
+            background:
+                rgba(255,250,243,.7);
+
+            transition: .25s;
+        }
+
+        .source-item:hover {
+            transform:
+                translateX(6px);
+
+            border-color:
+                #cda98d;
+        }
+
+        .file-icon {
+            width: 42px;
+            height: 42px;
+
+            border-radius: 9px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            background: #f0dcd0;
+
+            color: var(--maroon);
+
+            font-weight: 700;
+        }
+
+        /* ---------------------------------------
+           OUTPUT
+        --------------------------------------- */
+
+        #out {
+            margin-top: 20px;
+
+            background:
+                #fffaf3;
+
+            border:
+                1px solid #e0cbb6;
+
+            border-radius: 12px;
+
+            padding: 20px;
+
+            white-space: pre-wrap;
+
+            max-height: 450px;
+
+            overflow-y: auto;
+
+            font-size: 13px;
+        }
+
+        #status {
+            color: var(--maroon);
+            font-weight: 600;
+        }
+
+        /* ---------------------------------------
+           FOOTER CTA
+        --------------------------------------- */
+
+        .cta {
+            margin-top: 30px;
+
+            text-align: center;
+
+            padding: 25px;
+
+            border-radius: 18px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #8c292f,
+                    #5d161c
+                );
+
+            color: white;
+
+            box-shadow:
+                0 15px 40px rgba(125,32,39,.25);
+
+            animation:
+                ctaFloat 5s ease-in-out infinite;
+        }
+
+        @keyframes ctaFloat {
+
+            0%,100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .cta h2 {
+            margin: 0;
+
+            font-family:
+                "Playfair Display", serif;
+        }
+
+        /* ---------------------------------------
+           LOGOUT
+        --------------------------------------- */
+
+        .logout {
+            float: right;
+
+            border: none;
+
+            background: transparent;
+
+            color: var(--maroon);
+
+            cursor: pointer;
+
+            font-weight: 600;
+        }
+
+        /* ---------------------------------------
+           RESPONSIVE
+        --------------------------------------- */
+
+        @media(max-width: 850px) {
+
+            .welcome {
+                grid-template-columns: 1fr;
+            }
+
+            .stats {
+                grid-template-columns:
+                    repeat(2, 1fr);
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
+
+        @media(max-width: 500px) {
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .search-box {
+                flex-direction: column;
+            }
+
+            .welcome h1 {
+                font-size: 32px;
+            }
+
+            .auth-box {
+                padding: 25px;
+            }
+        }
+
+    </style>
+</head>
+
+
+<body>
+
+
+<!-- =========================================
+     NAVIGATION
+========================================= -->
+
+<nav>
+
+    <div class="brand">
+
+        <div class="brand-icon">
+            ◈
+        </div>
+
+        <div>
+            <h2>Personal Knowledge Base</h2>
+            <span>
+                Your knowledge, organized. Your future, amplified.
+            </span>
+        </div>
+
+    </div>
+
+
+    <div class="nav-links">
+
+        <button class="active">
+            Home
+        </button>
+
+        <button>
+            Dashboard
+        </button>
+
+        <button>
+            Sources
+        </button>
+
+        <button>
+            Activity
+        </button>
+
+        <button>
+            Profile
+        </button>
+
+    </div>
+
+</nav>
+
+
+<div class="container">
+
+
+<!-- =========================================
+     LOGIN / SIGNUP
+========================================= -->
+
+<div id="authCard">
+
+    <div class="auth-tabs">
+
+        <button
+            id="loginTab"
+            class="active"
+            onclick="showLogin()"
+        >
+            Login
+        </button>
+
+        <button
+            id="signupTab"
+            onclick="showSignup()"
+        >
+            Sign Up
+        </button>
+
+    </div>
+
+
+    <div class="auth-box">
+
+        <h1 id="authTitle">
+            Welcome Back!
+        </h1>
+
+        <p id="authSubtitle">
+            Login to access your knowledge base.
+        </p>
+
+
+        <input
+            id="username"
+            type="text"
+            placeholder="Username"
+        >
+
+        <input
+            id="password"
+            type="password"
+            placeholder="Password"
+        >
+
+
+        <div id="confirmContainer"
+             class="hidden">
+
+            <input
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirm Password"
+            >
+
+        </div>
+
+
+        <button
+            class="primary-btn"
+            onclick="handleAuth()"
+            id="authButton"
+        >
+            Login →
+        </button>
+
+
+        <div
+            id="authMessage"
+            style="margin-top:15px;text-align:center;"
+        ></div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================
+     MAIN APPLICATION
+========================================= -->
+
+<div
+    id="appCard"
+    class="hidden"
+>
+
+
+<button
+    class="logout"
+    onclick="logout()"
+>
+    Logout
+</button>
+
+
+<!-- WELCOME -->
+
+<div class="welcome">
+
+    <div>
+
+        <h1>
+            Welcome,
+            <span id="currentUser">
+                Samavia
+            </span>
+            👋
+        </h1>
+
+        <p>
+            Let's explore and unlock the power
+            of your knowledge.
+        </p>
+
+
+        <div class="stats">
+
+            <div class="stat">
+
+                <div class="stat-icon">
+                    ▣
+                </div>
+
+                <strong>
+                    24
+                </strong>
+
+                <span>
+                    Documents
+                </span>
+
+            </div>
+
+
+            <div class="stat">
+
+                <div class="stat-icon">
+                    ◈
+                </div>
+
+                <strong>
+                    1,248
+                </strong>
+
+                <span>
+                    Indexed Chunks
+                </span>
+
+            </div>
+
+
+            <div class="stat">
+
+                <div class="stat-icon">
+                    ⌕
+                </div>
+
+                <strong>
+                    156
+                </strong>
+
+                <span>
+                    Searches
+                </span>
+
+            </div>
+
+
+            <div class="stat">
+
+                <div class="stat-icon">
+                    ◉
+                </div>
+
+                <strong>
+                    Qdrant
+                </strong>
+
+                <span>
+                    Vector Storage
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- 3D OBJECT -->
+
+    <div class="scene">
+
+        <div class="cube">
+
+            <div class="face front"></div>
+            <div class="face back"></div>
+            <div class="face right"></div>
+            <div class="face left"></div>
+            <div class="face top"></div>
+            <div class="face bottom"></div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================
+     UPLOAD + SEARCH
+========================================= -->
+
+<div class="grid">
+
+
+    <!-- UPLOAD -->
+
+    <div class="card">
+
+        <h2>
+            Upload Document
+        </h2>
+
+        <p>
+            Add new documents to your
+            knowledge base.
+        </p>
+
+
+        <div class="drop-zone">
+
+            <div class="folder"></div>
+
+            <strong>
+                Upload your knowledge
+            </strong>
+
+            <p>
+                PDF, Markdown or TXT
+            </p>
+
+
+            <input
+                type="file"
+                id="file"
+                accept=".pdf,.md,.txt"
+                onchange="updateFileName()"
+            >
+
+            <p id="file-name">
+                No file selected
+            </p>
+
+
+            <button
+                class="choose-btn"
+                id="uploadBtn"
+                onclick="upload()"
+            >
+                Upload Document
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- SEARCH -->
+
+    <div class="card">
+
+        <h2>
+            Search Your Notes
+        </h2>
+
+        <p>
+            Ask anything from your documents.
+        </p>
+
+
+        <div class="search-box">
+
+            <input
+                id="q"
+                placeholder="What is an intelligent agent?"
+            >
+
+            <button
+                id="searchBtn"
+                onclick="search()"
+            >
+                Search
+            </button>
+
+        </div>
+
+
+        <div
+            class="scene"
+            style="height:220px;"
+        >
+
+            <div
+                style="
+                width:100px;
+                height:100px;
+                border-radius:50%;
+                border:15px solid #8b3439;
+                border-right-color:#c28a55;
+                transform:rotate(-30deg);
+                animation:searchFloat 4s ease-in-out infinite;
+                box-shadow:0 15px 30px rgba(125,32,39,.2);
+                "
+            ></div>
+
+        </div>
+
+
+        <button
+            class="primary-btn"
+            onclick="search()"
+        >
+            Search Knowledge Base →
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================
+     SOURCES
+========================================= -->
+
+<div class="card sources-card">
+
+    <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+    ">
+
+        <div>
+
+            <h2>
+                Your Sources
+            </h2>
+
+            <p>
+                Manage and view your indexed documents.
+            </p>
+
+        </div>
+
+
+        <button
+            class="choose-btn"
+            onclick="loadSources()"
+        >
+            ↻ Refresh
+        </button>
+
+    </div>
+
+
+    <div id="sourcesList">
+
+        <p>
+            Click Refresh to load your sources.
+        </p>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================
+     STATUS + RESULTS
+========================================= -->
+
+<div class="card">
+
+    <h2>
+        Search Results
+    </h2>
+
+    <p>
+        Status:
+        <strong id="status">
+            Ready
+        </strong>
+    </p>
+
+
+    <pre id="out">
+Your search results will appear here...
+    </pre>
+
+</div>
+
+
+<!-- =========================================
+     CTA
+========================================= -->
+
+<div class="cta">
+
+    <h2>
+        ✦ Unlock the power of your knowledge
+    </h2>
+
+    <p>
+        Search smarter. Learn faster.
+    </p>
+
+</div>
+
+
+</div>
+
+</div>
+
+
 <script>
-async function search(){let u=document.getElementById('user').value,q=document.getElementById('q').value;
-let r=await fetch('/search?user_id='+encodeURIComponent(u)+'&q='+encodeURIComponent(q)); document.getElementById('out').textContent=JSON.stringify(await r.json(),null,2);}
-async function upload(){let u=document.getElementById('user').value,f=document.getElementById('file').files[0],d=new FormData();d.append('user_id',u);d.append('file',f);
-let r=await fetch('/upload',{method:'POST',body:d});document.getElementById('out').textContent=JSON.stringify(await r.json(),null,2);}
-</script></body></html>
+
+
+/* =========================================
+   AUTH STATE
+========================================= */
+
+let currentUser = null;
+
+let authMode = "login";
+
+
+/* =========================================
+   LOGIN / SIGNUP TABS
+========================================= */
+
+function showLogin() {
+
+    authMode = "login";
+
+    document
+        .getElementById("loginTab")
+        .classList.add("active");
+
+    document
+        .getElementById("signupTab")
+        .classList.remove("active");
+
+
+    document
+        .getElementById("authTitle")
+        .textContent = "Welcome Back!";
+
+
+    document
+        .getElementById("authSubtitle")
+        .textContent =
+        "Login to access your knowledge base.";
+
+
+    document
+        .getElementById("authButton")
+        .textContent = "Login →";
+
+
+    document
+        .getElementById("confirmContainer")
+        .classList.add("hidden");
+
+}
+
+
+function showSignup() {
+
+    authMode = "signup";
+
+    document
+        .getElementById("signupTab")
+        .classList.add("active");
+
+    document
+        .getElementById("loginTab")
+        .classList.remove("active");
+
+
+    document
+        .getElementById("authTitle")
+        .textContent = "Create Account";
+
+
+    document
+        .getElementById("authSubtitle")
+        .textContent =
+        "Start building your personal knowledge base.";
+
+
+    document
+        .getElementById("authButton")
+        .textContent = "Create Account →";
+
+
+    document
+        .getElementById("confirmContainer")
+        .classList.remove("hidden");
+
+}
+
+
+/* =========================================
+   AUTH
+========================================= */
+
+async function handleAuth() {
+
+    const username =
+        document
+        .getElementById("username")
+        .value
+        .trim();
+
+
+    const password =
+        document
+        .getElementById("password")
+        .value;
+
+
+    if (!username || !password) {
+
+        showMessage(
+            "Please enter username and password.",
+            false
+        );
+
+        return;
+    }
+
+
+    if (authMode === "signup") {
+
+        const confirm =
+            document
+            .getElementById("confirmPassword")
+            .value;
+
+
+        if (password !== confirm) {
+
+            showMessage(
+                "Passwords do not match.",
+                false
+            );
+
+            return;
+        }
+
+    }
+
+
+    const formData =
+        new FormData();
+
+    formData.append(
+        "username",
+        username
+    );
+
+    formData.append(
+        "password",
+        password
+    );
+
+
+    const endpoint =
+        authMode === "login"
+        ? "/login"
+        : "/signup";
+
+
+    try {
+
+        const response =
+            await fetch(
+                endpoint,
+                {
+                    method: "POST",
+                    body: formData
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            showMessage(
+                data.detail ||
+                "Something went wrong.",
+                false
+            );
+
+            return;
+        }
+
+
+        if (authMode === "signup") {
+
+            showMessage(
+                "Account created! Logging you in...",
+                true
+            );
+
+            setTimeout(
+                () => {
+
+                    showLogin();
+
+                    document
+                        .getElementById("username")
+                        .value = username;
+
+                },
+                700
+            );
+
+            return;
+        }
+
+
+        currentUser =
+            data.user_id;
+
+
+        document
+            .getElementById("currentUser")
+            .textContent =
+            currentUser;
+
+
+        document
+            .getElementById("authCard")
+            .classList.add("hidden");
+
+
+        document
+            .getElementById("appCard")
+            .classList.remove("hidden");
+
+
+        setStatus("Logged in successfully");
+
+    }
+
+    catch(error) {
+
+        showMessage(
+            "Could not connect to the server.",
+            false
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   AUTH MESSAGE
+========================================= */
+
+function showMessage(
+    message,
+    success
+) {
+
+    const element =
+        document
+        .getElementById("authMessage");
+
+
+    element.textContent =
+        message;
+
+
+    element.style.color =
+        success
+        ? "#47733d"
+        : "#a1262d";
+
+}
+
+
+/* =========================================
+   LOGOUT
+========================================= */
+
+function logout() {
+
+    currentUser = null;
+
+
+    document
+        .getElementById("appCard")
+        .classList.add("hidden");
+
+
+    document
+        .getElementById("authCard")
+        .classList.remove("hidden");
+
+
+    document
+        .getElementById("password")
+        .value = "";
+
+
+    setStatus("Logged out");
+
+}
+
+
+/* =========================================
+   STATUS
+========================================= */
+
+function setStatus(text) {
+
+    document
+        .getElementById("status")
+        .textContent = text;
+
+}
+
+
+/* =========================================
+   OUTPUT
+========================================= */
+
+function renderOutput(data) {
+
+    document
+        .getElementById("out")
+        .textContent =
+        typeof data === "string"
+        ? data
+        : JSON.stringify(
+            data,
+            null,
+            2
+        );
+
+}
+
+
+/* =========================================
+   FILE NAME
+========================================= */
+
+function updateFileName() {
+
+    const file =
+        document
+        .getElementById("file")
+        .files[0];
+
+
+    document
+        .getElementById("file-name")
+        .textContent =
+        file
+        ? file.name
+        : "No file selected";
+
+}
+
+
+/* =========================================
+   UPLOAD
+========================================= */
+
+async function upload() {
+
+    if (!currentUser) {
+
+        renderOutput({
+            error:
+            "Please login first."
+        });
+
+        return;
+    }
+
+
+    const file =
+        document
+        .getElementById("file")
+        .files[0];
+
+
+    if (!file) {
+
+        renderOutput({
+            error:
+            "Please select a PDF, MD or TXT file."
+        });
+
+        return;
+    }
+
+
+    const button =
+        document
+        .getElementById("uploadBtn");
+
+
+    button.disabled = true;
+
+    button.textContent =
+        "Uploading...";
+
+
+    setStatus(
+        "Ingesting document..."
+    );
+
+
+    const formData =
+        new FormData();
+
+
+    formData.append(
+        "user_id",
+        currentUser
+    );
+
+
+    formData.append(
+        "file",
+        file
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/upload",
+                {
+                    method: "POST",
+                    body: formData
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        renderOutput(data);
+
+
+        if (response.ok) {
+
+            setStatus(
+                "Document uploaded and indexed"
+            );
+
+
+            document
+                .getElementById("file")
+                .value = "";
+
+
+            updateFileName();
+
+        }
+        else {
+
+            setStatus(
+                "Upload failed"
+            );
+
+        }
+
+    }
+
+    catch(error) {
+
+        renderOutput({
+            error:
+            error.toString()
+        });
+
+        setStatus(
+            "Connection failed"
+        );
+
+    }
+
+
+    button.disabled = false;
+
+    button.textContent =
+        "Upload Document";
+
+}
+
+
+/* =========================================
+   SEARCH
+========================================= */
+
+async function search() {
+
+    if (!currentUser) {
+
+        renderOutput({
+            error:
+            "Please login first."
+        });
+
+        return;
+    }
+
+
+    const query =
+        document
+        .getElementById("q")
+        .value
+        .trim();
+
+
+    if (!query) {
+
+        renderOutput({
+            error:
+            "Please enter a question."
+        });
+
+        return;
+    }
+
+
+    const button =
+        document
+        .getElementById("searchBtn");
+
+
+    button.disabled = true;
+
+    button.textContent =
+        "Searching...";
+
+
+    setStatus(
+        "Searching Qdrant..."
+    );
+
+
+    try {
+
+        const url =
+            `/search?user_id=${
+                encodeURIComponent(currentUser)
+            }&q=${
+                encodeURIComponent(query)
+            }&top_k=5`;
+
+
+        const response =
+            await fetch(url);
+
+
+        const data =
+            await response.json();
+
+
+        renderOutput(data);
+
+
+        setStatus(
+            response.ok
+            ? "Search successful"
+            : "Search error"
+        );
+
+    }
+
+    catch(error) {
+
+        renderOutput({
+            error:
+            error.toString()
+        });
+
+        setStatus(
+            "Connection failed"
+        );
+
+    }
+
+
+    button.disabled = false;
+
+    button.textContent =
+        "Search";
+
+}
+
+
+/* =========================================
+   SOURCES
+========================================= */
+
+async function loadSources() {
+
+    if (!currentUser) {
+
+        renderOutput({
+            error:
+            "Please login first."
+        });
+
+        return;
+    }
+
+
+    setStatus(
+        "Loading sources..."
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/sources?user_id=${
+                    encodeURIComponent(currentUser)
+                }`
+            );
+
+
+        const data =
+            await response.json();
+
+
+        renderOutput(data);
+
+
+        const list =
+            document
+            .getElementById("sourcesList");
+
+
+        list.innerHTML = "";
+
+
+        if (
+            !data.sources ||
+            data.sources.length === 0
+        ) {
+
+            list.innerHTML =
+                "<p>No documents indexed yet.</p>";
+
+            return;
+        }
+
+
+        data.sources.forEach(
+            source => {
+
+                const item =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                item.className =
+                    "source-item";
+
+
+                item.innerHTML = `
+
+                    <div style="
+                        display:flex;
+                        gap:14px;
+                        align-items:center;
+                    ">
+
+                        <div class="file-icon">
+                            DOC
+                        </div>
+
+                        <div>
+
+                            <strong>
+                                ${source.source}
+                            </strong>
+
+                            <div style="
+                                font-size:12px;
+                                color:#8a6c5d;
+                                margin-top:4px;
+                            ">
+
+                                ${source.chunks}
+                                chunks
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                `;
+
+
+                list.appendChild(item);
+
+            }
+        );
+
+
+        setStatus(
+            "Sources loaded"
+        );
+
+    }
+
+    catch(error) {
+
+        renderOutput({
+            error:
+            error.toString()
+        });
+
+        setStatus(
+            "Failed to load sources"
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   ENTER TO SEARCH
+========================================= */
+
+document
+    .getElementById("q")
+    .addEventListener(
+        "keypress",
+        function(event) {
+
+            if (
+                event.key === "Enter"
+            ) {
+
+                search();
+
+            }
+
+        }
+    );
+
+
+</script>
+
+
+<style>
+
+@keyframes searchFloat {
+
+    0%,100% {
+        transform:
+            translateY(0)
+            rotate(-30deg);
+    }
+
+    50% {
+        transform:
+            translateY(-18px)
+            rotate(-20deg);
+    }
+
+}
+
+</style>
+
+
+</body>
+</html>
