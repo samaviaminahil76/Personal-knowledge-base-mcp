@@ -1,0 +1,7 @@
+[
+  {
+    "query": "What is binary search?",
+    "relevant_doc_ids": ["bca33374-2d11-4dc1-9e2e-dab411daa051"],
+    "top_k": 5
+  }
+]

@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Personal Knowledge Base</title>
+<style>body{font-family:Arial;max-width:900px;margin:40px auto;padding:0 20px}input,button{padding:10px;margin:5px}#out{white-space:pre-wrap;background:#f5f5f5;padding:20px}</style></head>
+<body><h1>Personal Knowledge Base</h1><p>Multi-user semantic search backed by Qdrant + MCP.</p>
+<input id="user" value="demo"><input id="q" placeholder="Ask your notes a question" size="45"><button onclick="search()">Search</button>
+<input type="file" id="file"><button onclick="upload()">Upload</button>
+<pre id="out"></pre>
+<script>
+async function search(){let u=document.getElementById('user').value,q=document.getElementById('q').value;
+let r=await fetch('/search?user_id='+encodeURIComponent(u)+'&q='+encodeURIComponent(q)); document.getElementById('out').textContent=JSON.stringify(await r.json(),null,2);}
+async function upload(){let u=document.getElementById('user').value,f=document.getElementById('file').files[0],d=new FormData();d.append('user_id',u);d.append('file',f);
+let r=await fetch('/upload',{method:'POST',body:d});document.getElementById('out').textContent=JSON.stringify(await r.json(),null,2);}
+</script></body></html>
