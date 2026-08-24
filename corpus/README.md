@@ -1,97 +1,68 @@
-# Personal Knowledge Base MCP Server
+# Personal Knowledge Corpus
 
-An MCP server that provides semantic search over my personal semester notes using embeddings and Qdrant.
+This directory contains the real, student-owned document corpus used to
+demonstrate the Personal Knowledge-Base MCP Server.
 
-## Problem
+## Corpus Source
 
-Keyword search can miss relevant information when the wording of a query differs from the wording in the source document. This project uses semantic vector search to retrieve relevant knowledge by meaning.
+The corpus consists of my own semester notes created for studying
+Artificial Intelligence and related university coursework.
 
-## Architecture
+### Included Document
 
-PDF / Markdown / TXT
-        ↓
-Text Extraction
-        ↓
-Chunking
-        ↓
-Sentence Transformers
-        ↓
-Qdrant Vector Database
-        ↓
-FastMCP Server
-        ↓
-MCP Client
+- `Samavia_Semester_Notes.md` — personal semester notes covering:
+  - Introduction to Artificial Intelligence
+  - Intelligent Agents
+  - Environment Types
+  - Agent Architectures
+  - Problem Solving by Search
+  - Knowledge Representation and Logic
+  - Machine Learning
+  - Probabilistic Reasoning
 
-## MCP Tools
+## Why This Corpus
 
-### search_notes
-Performs semantic search and returns ranked chunks with similarity scores and source citations.
+The project requirement is to demonstrate semantic retrieval on a real,
+student-owned corpus rather than a generic tutorial or public benchmark
+dataset.
 
-### get_document
-Retrieves the complete indexed context for a document using its document ID.
+These notes were selected because they contain multiple related AI concepts
+that can be retrieved semantically even when the query wording differs from
+the exact wording in the notes.
 
-### list_sources
-Lists all documents indexed for a user.
+## Ingestion
 
-## Corpus
+The document is:
 
-The project uses my personally created semester notes:
+1. Read as Markdown/TXT content.
+2. Split into overlapping chunks.
+3. Converted into sentence embeddings using
+   `sentence-transformers/all-MiniLM-L6-v2`.
+4. Stored as vectors and metadata in Qdrant Cloud.
+5. Retrieved using cosine-similarity semantic search.
 
-`Samavia_Semester_Notes.md`
+## Current Indexed Source
 
-The document contains 9 indexed chunks covering topics including:
+| Document | Type | Chunks |
+|---|---|---:|
+| `Samavia_Semester_Notes.md` | Markdown | 9 |
 
-- Introduction & Intelligent Agents
-- Problem Solving by Search
-- Knowledge Representation & Logic
-- Machine Learning & Probabilistic Reasoning
+## Example Semantic Query
 
-## Technology Stack
+**Query:**
 
-- Python
-- FastMCP
-- Qdrant Cloud
-- Sentence Transformers
-- all-MiniLM-L6-v2
-- FastMCP STDIO transport
+> What is an intelligent agent?
 
-## Retrieval
+The system retrieves the relevant section:
 
-The system uses cosine similarity with a configurable confidence threshold of 0.35. Queries below the threshold return `no_confident_match` instead of forcing an irrelevant result.
+> Artificial Intelligence (AI) is the study of agents that receive percepts
+> from the environment and perform rational actions to maximize their chance
+> of success.
 
-Example:
+The result includes the document name, chunk number, similarity score,
+and document ID for citation and traceability.
 
-Query: `What is an intelligent agent?`
+## Privacy
 
-Top result:
-
-- Source: `Samavia_Semester_Notes.md`
-- Chunk: `0`
-- Similarity: `0.6372`
-
-## Evaluation
-
-A hand-labeled test set of 5 queries was used to evaluate whether the system retrieved a relevant chunk.
-
-Result:
-
-**5/5 queries returned a relevant result — 100% query-level retrieval success.**
-
-## Demo
-
-The MCP server was tested through an MCP client and successfully exposed:
-
-- `search_notes`
-- `get_document`
-- `list_sources`
-
-Screenshots of the live tool calls are included in the project documentation.
-
-## Future Work
-
-- Multi-user web interface
-- User authentication
-- Document upload UI
-- Search history
-- FastAPI backend
-- Remote HTTP deployment
+This corpus contains personal study notes and is included only as the
+demonstration dataset for this fellowship project.
