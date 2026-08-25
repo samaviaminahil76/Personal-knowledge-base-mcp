@@ -1,109 +1,127 @@
 # Personal Knowledge-Base MCP Server
 
-A recruiter-ready MCP server that exposes semantic search over a real, personally-owned document corpus.
+A recruiter-ready Model Context Protocol (MCP) server that provides semantic search over a real, personally-owned document corpus.
 
-## Problem
+The project combines an MCP server, Qdrant vector search, sentence-transformer embeddings, document ingestion, retrieval evaluation, and a lightweight multi-user web interface.
 
-Keyword search misses semantically related information when the wording differs. This project indexes personal notes with embeddings and exposes reusable retrieval tools through the Model Context Protocol.
+---
 
-## What it ships
+## Overview
 
-- **FastMCP server** with 3 callable tools:
-  - `search_notes(user_id, query, top_k)` — ranked chunks + source citations
-  - `get_document(user_id, doc_id)` — full indexed document context
-  - `list_sources(user_id)` — indexed sources
-- PDF/Markdown/TXT ingestion and overlap-aware chunking
-- `sentence-transformers/all-MiniLM-L6-v2` embeddings
-- Qdrant vector storage with per-user collections
-- Similarity threshold with explicit `no_confident_match`
-- FastAPI multi-user web demo with signup/login, upload and search
-- Hand-labeled retrieval evaluation script
+Traditional keyword search can miss relevant information when the wording of a query differs from the wording used in a document.
 
-## Architecture
+This project solves that problem by converting documents into vector embeddings and storing them in Qdrant. Users can then search their knowledge base by meaning rather than exact keywords.
 
-See [`architecture.md`](architecture.md).
+The retrieval functionality is exposed through the Model Context Protocol (MCP), allowing an MCP-compatible client to call the knowledge-base tools directly.
 
-## Quick start
+---
 
-### 1. Install
+## Problem Statement
 
-```bash
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+Static keyword search depends heavily on matching exact words.
 
-### 2. Configure Qdrant Cloud
+For example, a document may contain:
 
-Create a free Qdrant Cloud cluster, copy its URL/API key, and create `.env` from `.env.example`.
+> "Agents receive percepts from their environment and perform rational actions."
 
-```env
-QDRANT_URL=https://YOUR-CLUSTER.qdrant.io
-QDRANT_API_KEY=YOUR_KEY
-```
+while a user searches:
 
-### 3. Add your real corpus
+> "What is an intelligent agent?"
 
-Put 2–5 of your own semester notes in `corpus/`, then:
+A semantic retrieval system can recognize that these concepts are related even when the wording is different.
 
-```bash
-python ingest.py --user demo --path corpus
-```
+This project provides reusable semantic retrieval tools backed by a vector database rather than building a one-off chatbot.
 
-### 4. Run the web demo
+---
 
-```bash
-uvicorn api:app --reload
-```
+## Goals
 
-Open `http://127.0.0.1:8000`.
+The project was designed to:
 
-### 5. Run the MCP server
+- Build a working MCP server exposing reusable retrieval tools.
+- Index a real student-owned document corpus.
+- Generate embeddings for document chunks.
+- Store embeddings in Qdrant.
+- Retrieve semantically relevant document chunks.
+- Return ranked results with source citations.
+- Support retrieving complete indexed documents.
+- Provide a list of indexed sources.
+- Return `no_confident_match` when a query falls below the similarity threshold.
+- Provide measurable retrieval evaluation using hand-labeled queries.
+- Provide a simple multi-user web demonstration.
 
-```bash
-python server.py
-```
+---
 
-For Claude Desktop, add the server command to the MCP configuration using the absolute path to `server.py` and the same Python interpreter from your virtual environment.
+## Key Features
 
-Example shape:
+### MCP Server
+
+The FastMCP server exposes three callable tools:
+
+#### `search_notes(user_id, query, top_k)`
+
+Performs semantic search and returns ranked document chunks with:
+
+- Rank
+- Similarity score
+- Document ID
+- Source filename
+- Chunk ID
+- Retrieved text
+- Source citation
+
+#### `get_document(user_id, doc_id)`
+
+Retrieves the full indexed document context associated with a document ID.
+
+#### `list_sources(user_id)`
+
+Lists the documents currently indexed for a user.
+
+---
+
+### Document Ingestion
+
+The system supports:
+
+- PDF
+- Markdown (`.md`)
+- TXT
+
+Documents are processed into overlapping chunks before embeddings are generated.
+
+---
+
+### Semantic Embeddings
+
+The project uses:
+
+`sentence-transformers/all-MiniLM-L6-v2`
+
+Each document chunk is converted into a vector representation.
+
+The vectors are then stored and searched using Qdrant.
+
+---
+
+### Vector Database
+
+The project uses **Qdrant Cloud** for vector storage and similarity search.
+
+The system supports per-user isolation so that each user's indexed documents can be kept separate.
+
+---
+
+### Similarity Threshold
+
+The retrieval system does not blindly return results for every query.
+
+If the best matches do not meet the configured similarity threshold, the system returns:
 
 ```json
 {
-  "mcpServers": {
-    "personal-knowledge-base": {
-      "command": "C:\\PATH\\TO\\.venv\\Scripts\\python.exe",
-      "args": ["C:\\PATH\\TO\\personal-knowledge-base-mcp\\server.py"]
-    }
-  }
+  "status": "no_confident_match",
+  "query": "example query",
+  "threshold": 0.35,
+  "results": []
 }
-```
-
-## Retrieval quality
-
-Create a small hand-labeled set in `evaluation_queries.json`, with each query mapped to the correct `doc_id`, then run:
-
-```bash
-python evaluate.py --user demo
-```
-
-Report the actual measured Precision@k in your final README. Do not fabricate the number.
-
-## Demo
-
-See [`demo_script.md`](demo_script.md) for a 5-minute live demo sequence.
-
-## Tech stack
-
-Python · FastMCP · Qdrant Cloud · Sentence Transformers · FastAPI · SQLite · PDF/Markdown/TXT
-
-## Why this is useful
-
-The MCP layer is protocol-level: the same retrieval capability can be called by Claude Desktop or another MCP-compatible client instead of being locked into a custom chatbot UI.
-
-## Limitations
-
-This is a fellowship/demo implementation. Authentication is intentionally basic; production deployments should add secure sessions, password hashing, authorization middleware, rate limits, encrypted storage, and stronger tenant isolation.
