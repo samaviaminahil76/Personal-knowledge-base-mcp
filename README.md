@@ -1,24 +1,24 @@
 # Personal Knowledge-Base MCP Server
 
-A recruiter-ready Model Context Protocol (MCP) server that provides semantic search over a real, personally-owned document corpus.
+A recruiter-ready **Model Context Protocol (MCP) server** that provides semantic search over a real, personally-owned document corpus.
 
-The project combines an MCP server, Qdrant vector search, sentence-transformer embeddings, document ingestion, retrieval evaluation, and a lightweight multi-user web interface.
+The project combines **FastMCP, Qdrant vector search, sentence-transformer embeddings, document ingestion, retrieval evaluation, FastAPI, SQLite authentication, and a multi-user web interface**.
 
 ---
 
-## Overview
+## 1. Overview
 
 Traditional keyword search can miss relevant information when the wording of a query differs from the wording used in a document.
 
-This project solves that problem by converting documents into vector embeddings and storing them in Qdrant. Users can then search their knowledge base by meaning rather than exact keywords.
+This project solves that problem by converting documents into vector embeddings and storing them in **Qdrant**. Users can then search their knowledge base by meaning rather than exact keywords.
 
-The retrieval functionality is exposed through the Model Context Protocol (MCP), allowing MCP-compatible clients to call the knowledge-base tools directly.
+The retrieval functionality is exposed through the **Model Context Protocol (MCP)**, allowing an MCP-compatible client to call the knowledge-base tools directly.
 
-This is a working retrieval system rather than a chatbot UI.
+The project is designed as a working, demo-able retrieval server rather than a chatbot application.
 
 ---
 
-## Problem Statement
+## 2. Problem Statement
 
 Static keyword search depends heavily on matching exact words.
 
@@ -32,60 +32,113 @@ while a user searches:
 
 A semantic retrieval system can recognize that these concepts are related even when the wording is different.
 
-This project provides reusable semantic retrieval tools backed by a vector database rather than building a one-off chatbot.
+This project provides reusable semantic retrieval tools backed by a vector database instead of building a one-off chatbot.
 
 ---
 
-## Goals
+## 3. Goals
 
 The project was designed to:
 
 - Build a working MCP server exposing reusable retrieval tools.
 - Index a real student-owned document corpus.
-- Generate embeddings for document chunks.
+- Ingest PDF, Markdown, and TXT documents.
+- Chunk documents before embedding.
+- Generate semantic embeddings.
 - Store embeddings in Qdrant.
 - Retrieve semantically relevant document chunks.
 - Return ranked results with source citations.
-- Support retrieving complete indexed documents.
-- Provide a list of indexed sources.
-- Return `no_confident_match` when a query falls below the similarity threshold.
-- Provide measurable retrieval evaluation using hand-labeled queries.
-- Provide a simple multi-user web demonstration.
+- Retrieve complete indexed document context.
+- List indexed sources.
+- Support per-user document isolation.
+- Return `no_confident_match` for low-confidence queries.
+- Measure retrieval quality using hand-labeled queries.
+- Provide a lightweight multi-user web demonstration.
+- Provide a live, connectable MCP server suitable for an MCP-compatible client.
 
 ---
 
-# Key Features
+## 4. Target Corpus
 
-## 1. MCP Server
+The project uses a real, student-owned corpus rather than a generic tutorial or Kaggle dataset.
 
-The FastMCP server exposes three callable tools.
+The current demonstration corpus contains:
 
-### `search_notes(user_id, query, top_k)`
+- `Samavia_Semester_Notes.md`
 
-Performs semantic search and returns ranked document chunks containing:
+The notes contain Artificial Intelligence course material including:
 
-- Rank
-- Similarity score
-- Document ID
-- Source filename
-- Chunk ID
-- Retrieved text
-- Source citation
+- Intelligent Agents
+- Environment Types
+- Agent Architectures
+- Search Algorithms
+- Breadth-First Search
+- A* Search
+- Greedy Best-First Search
+- Minimax
+- Alpha-Beta Pruning
+- Propositional Logic
+- First-Order Logic
+- Reinforcement Learning
+- Bayes' Theorem
+- Perceptrons
+- Backpropagation
 
-Example:
+Additional personal documents can be uploaded through the web interface in PDF, Markdown, or TXT format.
 
-```json
-{
-  "status": "ok",
-  "query": "What is an intelligent agent?",
-  "results": [
-    {
-      "rank": 1,
-      "score": 0.6372,
-      "doc_id": "23a876d6-e46d-4fc4-9701-d3b924896841",
-      "source": "Samavia_Semester_Notes.md",
-      "chunk_id": 0,
-      "text": "Artificial Intelligence (AI) is the study of agents..."
-    }
-  ]
-}
+---
+
+## 5. Architecture
+
+```text
+                     ┌──────────────────────┐
+                     │     MCP Client       │
+                     │ Claude / MCP Client  │
+                     └──────────┬───────────┘
+                                │
+                         MCP / JSON-RPC
+                                │
+                                ▼
+                     ┌──────────────────────┐
+                     │    FastMCP Server    │
+                     │                      │
+                     │  search_notes()      │
+                     │  get_document()      │
+                     │  list_sources()      │
+                     └──────────┬───────────┘
+                                │
+                                ▼
+                     ┌──────────────────────┐
+                     │   Retrieval Core     │
+                     │                      │
+                     │ Chunking             │
+                     │ Embeddings           │
+                     │ Similarity Search    │
+                     │ Threshold Filtering  │
+                     └──────────┬───────────┘
+                                │
+                                ▼
+                     ┌──────────────────────┐
+                     │    Qdrant Cloud      │
+                     │   Vector Database    │
+                     └──────────────────────┘
+
+
+        ┌─────────────────────────────────────────┐
+        │             Web Application             │
+        │                                         │
+        │  Sign Up / Login                        │
+        │  Document Upload                        │
+        │  Semantic Search                        │
+        │  Source Listing                         │
+        │  Search Results                         │
+        └──────────────────┬──────────────────────┘
+                           │
+                           ▼
+                    ┌───────────────┐
+                    │   FastAPI     │
+                    │   Backend     │
+                    └───────┬───────┘
+                            │
+                            ▼
+                     Retrieval Core
